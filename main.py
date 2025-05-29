@@ -64,7 +64,7 @@ if st.session_state['page'] == "unsupervised":
     st.write("#### Statistik Deskriptif")
     st.dataframe(df.describe())
 
-    st.write("#### Visualisasi Korelasi Fitur (Heatmap yang Rapi)")
+    st.write("#### Visualisasi Korelasi Fitur")
     plt.figure(figsize=(15, 10))
     corr_matrix = df.corr()
     sns.heatmap(corr_matrix, annot=False, cmap='coolwarm', linewidths=0.5, square=True)
