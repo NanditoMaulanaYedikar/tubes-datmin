@@ -22,7 +22,7 @@ def load_data():
 df = load_data()
 
 # ============================================
-# Sidebar Navigasi (pakai tombol) alif
+# Sidebar Navigasi (pakai tombol) alif jelek
 # ============================================
 st.sidebar.title("Navigasi")
 if st.sidebar.button("Unsupervised Learning"):
