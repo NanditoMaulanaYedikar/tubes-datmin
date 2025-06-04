@@ -22,7 +22,7 @@ def load_data():
 df = load_data()
 
 # ============================================
-# Sidebar Navigasi (pakai tombol) alif jelek
+# Sidebar Navigasi (pakai tombol)
 # ============================================
 st.sidebar.title("Navigasi")
 if st.sidebar.button("Unsupervised Learning"):
@@ -139,3 +139,11 @@ elif st.session_state['page'] == "supervised":
         'Koefisien': lr.coef_[0]
     }).sort_values(by='Koefisien', key=abs, ascending=False)
     st.dataframe(coef_df)
+
+ # Tambahan penjelasan interpretasi koefisien
+    st.markdown("""
+    **Interpretasi Koefisien:**
+    - Koefisien positif artinya fitur meningkatkan kemungkinan polis berhasil diterbitkan.
+    - Koefisien negatif artinya fitur menurunkan kemungkinan polis berhasil diterbitkan.
+    - Semakin besar nilai absolut koefisien, semakin besar pengaruhnya terhadap prediksi.
+    """)
