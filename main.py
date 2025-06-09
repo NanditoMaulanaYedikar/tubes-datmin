@@ -16,23 +16,23 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 # ============================================
 @st.cache_data
 def load_data():
-    df = pd.read_excel('data/MKG1- Data Konversi & Repricing.xlsx', sheet_name=0)
-    return df
+    try:
+        df = pd.read_excel('data/MKG1_Data_Konversi_Repricing.xlsx')  # Pastikan nama file ini cocok
+        return df
+    except Exception as e:
+        st.error(f"Gagal memuat data: {e}")
+        return pd.DataFrame()
 
 df = load_data()
 
+if df.empty:
+    st.stop()
+
 # ============================================
-# Sidebar Navigasi (pakai tombol) alif jelek
+# Sidebar Navigasi (radio yang stabil)
 # ============================================
 st.sidebar.title("Navigasi")
-if st.sidebar.button("Unsupervised Learning"):
-    st.session_state['page'] = "unsupervised"
-if st.sidebar.button("Supervised Learning"):
-    st.session_state['page'] = "supervised"
-
-# Inisialisasi page default
-if 'page' not in st.session_state:
-    st.session_state['page'] = "unsupervised"
+page = st.sidebar.radio("Pilih halaman:", ["Unsupervised Learning", "Supervised Learning"])
 
 # ============================================
 # Preprocessing
@@ -47,31 +47,25 @@ target_col = 'Issued' if 'Issued' in df.columns else df.columns[-1]
 X = df.drop(target_col, axis=1)
 y = df[target_col]
 
-# Konversi kolom ke numerik
-X = X.apply(pd.to_numeric, errors='coerce')
-X = X.fillna(0)
-
-# Scaling
+# Konversi kolom ke numerik dan scaling
+X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
 # ============================================
 # Halaman: Unsupervised Learning
 # ============================================
-if st.session_state['page'] == "unsupervised":
+if page == "Unsupervised Learning":
     st.title("Unsupervised Learning - K-Means Clustering")
 
     st.write("#### Statistik Deskriptif")
     st.dataframe(df.describe())
 
     st.write("#### Visualisasi Korelasi Fitur")
-    plt.figure(figsize=(15, 10))
-    corr_matrix = df.corr()
-    sns.heatmap(corr_matrix, annot=False, cmap='coolwarm', linewidths=0.5, square=True)
-    plt.xticks(rotation=45, ha='right', fontsize=10)
-    plt.yticks(rotation=0, fontsize=10)
-    plt.title('Korelasi Antar Fitur', fontsize=14, fontweight='bold')
-    st.pyplot(plt.gcf())
+    fig_corr, ax_corr = plt.subplots(figsize=(12, 8))
+    sns.heatmap(df.corr(), annot=False, cmap='coolwarm', linewidths=0.5, ax=ax_corr)
+    ax_corr.set_title('Korelasi Antar Fitur')
+    st.pyplot(fig_corr)
 
     # K-Means Clustering
     n_clusters = st.slider("Pilih jumlah cluster:", 2, 6, 3)
@@ -87,15 +81,15 @@ if st.session_state['page'] == "unsupervised":
     df['PCA1'] = pca_result[:, 0]
     df['PCA2'] = pca_result[:, 1]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(x='PCA1', y='PCA2', hue='Cluster', data=df, palette='Set2', ax=ax)
-    ax.set_title('Visualisasi Cluster (PCA)', fontsize=14, fontweight='bold')
-    st.pyplot(fig)
+    fig_pca, ax_pca = plt.subplots(figsize=(10, 6))
+    sns.scatterplot(x='PCA1', y='PCA2', hue='Cluster', data=df, palette='Set2', ax=ax_pca)
+    ax_pca.set_title('Visualisasi Cluster (PCA)', fontsize=14)
+    st.pyplot(fig_pca)
 
 # ============================================
 # Halaman: Supervised Learning
 # ============================================
-elif st.session_state['page'] == "supervised":
+elif page == "Supervised Learning":
     st.title("Supervised Learning - Logistic Regression")
 
     # Splitting Data
@@ -111,10 +105,10 @@ elif st.session_state['page'] == "supervised":
     st.dataframe(pd.DataFrame(report).transpose())
 
     st.write("#### Confusion Matrix")
-    fig, ax = plt.subplots()
-    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', ax=ax)
-    ax.set_title('Confusion Matrix', fontsize=14, fontweight='bold')
-    st.pyplot(fig)
+    fig_cm, ax_cm = plt.subplots()
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', ax=ax_cm)
+    ax_cm.set_title('Confusion Matrix')
+    st.pyplot(fig_cm)
 
     st.write("Label unik di y_test:", np.unique(y_test))
     if len(np.unique(y_test)) == 2:
@@ -122,14 +116,14 @@ elif st.session_state['page'] == "supervised":
         auc_score = roc_auc_score(y_test, y_prob)
 
         st.write("#### ROC Curve")
-        fig, ax = plt.subplots()
-        ax.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
-        ax.plot([0, 1], [0, 1], linestyle='--', color='gray')
-        ax.set_xlabel('False Positive Rate')
-        ax.set_ylabel('True Positive Rate')
-        ax.legend()
-        ax.set_title('ROC Curve', fontsize=14, fontweight='bold')
-        st.pyplot(fig)
+        fig_roc, ax_roc = plt.subplots()
+        ax_roc.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
+        ax_roc.plot([0, 1], [0, 1], linestyle='--', color='gray')
+        ax_roc.set_xlabel('False Positive Rate')
+        ax_roc.set_ylabel('True Positive Rate')
+        ax_roc.set_title('ROC Curve')
+        ax_roc.legend()
+        st.pyplot(fig_roc)
     else:
         st.warning("ROC Curve hanya tersedia untuk binary classification.")
 
