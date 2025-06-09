@@ -15,9 +15,13 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 # Load Data
 # ============================================
 @st.cache_data
+
 def load_data():
     try:
         df = pd.read_excel('MKG1_Data_Konversi_Repricing.xlsx')
+        for col in df.columns:
+            if 'date' in col.lower() or 'time' in col.lower():
+                df[col] = pd.to_datetime(df[col], errors='coerce')
         return df
     except Exception as e:
         st.error(f"Gagal memuat data: {e}")
@@ -28,7 +32,7 @@ if df.empty:
     st.stop()
 
 # ============================================
-# Sidebar Navigasi (radio yang stabil)
+# Sidebar Navigasi
 # ============================================
 st.sidebar.title("Navigasi")
 page = st.sidebar.radio("Pilih halaman:", ["Unsupervised Learning", "Supervised Learning"])
@@ -46,7 +50,7 @@ target_col = 'Issued' if 'Issued' in df.columns else df.columns[-1]
 X = df.drop(target_col, axis=1)
 y = df[target_col]
 
-# Konversi kolom ke numerik dan scaling
+# Konversi dan scaling
 X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
@@ -62,7 +66,7 @@ if page == "Unsupervised Learning":
 
     st.write("#### Visualisasi Korelasi Fitur")
     fig_corr, ax_corr = plt.subplots(figsize=(12, 8))
-    sns.heatmap(df.corr(), annot=False, cmap='coolwarm', linewidths=0.5, ax=ax_corr)
+    sns.heatmap(df.corr(numeric_only=True), annot=False, cmap='coolwarm', linewidths=0.5, ax=ax_corr)
     ax_corr.set_title('Korelasi Antar Fitur')
     st.pyplot(fig_corr)
 
@@ -97,7 +101,7 @@ elif page == "Supervised Learning":
     lr = LogisticRegression()
     lr.fit(X_train, y_train)
     y_pred = lr.predict(X_test)
-    y_prob = lr.predict_proba(X_test)[:, 1]
+    y_prob = lr.predict_proba(X_test)[:, 1] if len(np.unique(y_train)) == 2 else None
 
     st.write("#### Classification Report")
     report = classification_report(y_test, y_pred, output_dict=True)
@@ -110,7 +114,7 @@ elif page == "Supervised Learning":
     st.pyplot(fig_cm)
 
     st.write("Label unik di y_test:", np.unique(y_test))
-    if len(np.unique(y_test)) == 2:
+    if y_prob is not None:
         fpr, tpr, _ = roc_curve(y_test, y_prob)
         auc_score = roc_auc_score(y_test, y_prob)
 
@@ -124,7 +128,7 @@ elif page == "Supervised Learning":
         ax_roc.legend()
         st.pyplot(fig_roc)
     else:
-        st.warning("ROC Curve hanya tersedia untuk binary classification.")
+        st.warning("ROC Curve hanya tersedia untuk klasifikasi biner.")
 
     st.write("#### Koefisien Model")
     coef_df = pd.DataFrame({
