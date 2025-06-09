@@ -17,14 +17,13 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_excel('data/MKG1_Data_Konversi_Repricing.xlsx')  # Pastikan nama file ini cocok
+        df = pd.read_excel('data/MKG1_Data_Konversi_Repricing.xlsx')
         return df
     except Exception as e:
         st.error(f"Gagal memuat data: {e}")
         return pd.DataFrame()
 
 df = load_data()
-
 if df.empty:
     st.stop()
 
@@ -42,7 +41,7 @@ le = LabelEncoder()
 for col in df.select_dtypes(include='object').columns:
     df[col] = le.fit_transform(df[col])
 
-# Target variabel
+# Tentukan kolom target
 target_col = 'Issued' if 'Issued' in df.columns else df.columns[-1]
 X = df.drop(target_col, axis=1)
 y = df[target_col]
@@ -133,3 +132,10 @@ elif page == "Supervised Learning":
         'Koefisien': lr.coef_[0]
     }).sort_values(by='Koefisien', key=abs, ascending=False)
     st.dataframe(coef_df)
+
+    st.markdown("""
+    **Interpretasi Koefisien:**
+    - Koefisien positif artinya fitur meningkatkan kemungkinan polis berhasil diterbitkan.
+    - Koefisien negatif artinya fitur menurunkan kemungkinan polis berhasil diterbitkan.
+    - Semakin besar nilai absolut koefisien, semakin besar pengaruhnya terhadap prediksi.
+    """)
