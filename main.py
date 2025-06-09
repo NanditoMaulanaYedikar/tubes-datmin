@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_excel('data/MKG1_Data_Konversi_Repricing.xlsx')
+        df = pd.read_excel('MKG1_Data_Konversi_Repricing.xlsx')
         return df
     except Exception as e:
         st.error(f"Gagal memuat data: {e}")
