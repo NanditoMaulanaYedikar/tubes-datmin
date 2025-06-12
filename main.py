@@ -37,7 +37,40 @@ if df.empty:
 # ============================================
 st.sidebar.title("Navigasi")
 page = st.sidebar.radio("Pilih halaman:", ["Unsupervised Learning", "Supervised Learning"])
+if page == "Data Understanding":
+    st.title("Data Understanding")
 
+    st.write("#### Struktur Data")
+    st.dataframe(df.head())
+
+    st.write("#### Info Kolom dan Tipe Data")
+    buffer = []
+    df.info(buf=buffer)
+    s = '\n'.join(map(str, buffer))
+    st.text(s)
+
+    st.write("#### Statistik Deskriptif")
+    st.dataframe(df.describe())
+
+    st.write("#### Distribusi Variabel Target (Issued)")
+    if 'Issued' in df.columns:
+        st.bar_chart(df['Issued'].value_counts())
+    else:
+        st.warning("Kolom 'Issued' tidak ditemukan dalam dataset.")
+
+    st.write("#### Korelasi Antar Variabel Numerik")
+    fig_corr, ax_corr = plt.subplots(figsize=(12, 8))
+    sns.heatmap(df.corr(numeric_only=True), annot=False, cmap='coolwarm', linewidths=0.5, ax=ax_corr)
+    ax_corr.set_title('Korelasi Antar Fitur')
+    st.pyplot(fig_corr)
+
+    st.write("#### Boxplot per Fitur Numerik")
+    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    selected_col = st.selectbox("Pilih fitur untuk ditampilkan boxplot:", num_cols)
+    fig_box, ax_box = plt.subplots()
+    sns.boxplot(x=df[selected_col], ax=ax_box, color='skyblue')
+    ax_box.set_title(f"Boxplot: {selected_col}")
+    st.pyplot(fig_box)
 # ============================================
 # Preprocessing
 # ============================================
