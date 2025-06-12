@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import io 
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
@@ -38,7 +39,6 @@ page = st.sidebar.radio("Pilih halaman:", [
     "Data Understanding", 
     "Unsupervised Learning", 
     "Supervised Learning"])
-
 # ============================================
 # 2. Data Understanding (Pemahaman Data)
 # ============================================
@@ -49,9 +49,9 @@ if page == "Data Understanding":
     st.dataframe(df.head())
 
     st.write("#### Info Kolom dan Tipe Data")
-    buffer = []
+    buffer = io.StringIO()   # ✅ perbaikan di sini
     df.info(buf=buffer)
-    s = '\n'.join(map(str, buffer))
+    s = buffer.getvalue()
     st.text(s)
 
     st.write("#### Statistik Deskriptif")
