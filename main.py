@@ -49,7 +49,7 @@ if page == "Data Understanding":
     st.dataframe(df.head())
 
     st.write("#### Info Kolom dan Tipe Data")
-    buffer = io.StringIO()   # ✅ perbaikan di sini
+    buffer = io.StringIO()  
     df.info(buf=buffer)
     s = buffer.getvalue()
     st.text(s)
