@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import io 
+from sklearn.decomposition import SparsePCA
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
@@ -13,9 +13,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, roc_auc_score
 
 # ============================================
-# 1. Data Collection (Pengumpulan Data)
+# Load Data
 # ============================================
 @st.cache_data
+
 def load_data():
     try:
         df = pd.read_excel('MKG1_Data_Konversi_Repricing.xlsx')
@@ -35,102 +36,124 @@ if df.empty:
 # Sidebar Navigasi
 # ============================================
 st.sidebar.title("Navigasi")
-page = st.sidebar.radio("Pilih halaman:", [
-    "Data Understanding", 
-    "Unsupervised Learning", 
-    "Supervised Learning"])
-# ============================================
-# 2. Data Understanding (Pemahaman Data)
-# ============================================
-if page == "Data Understanding":
-    st.title("Data Understanding")
+page = st.sidebar.radio("Pilih halaman:", ["Unsupervised Learning", "Supervised Learning"])
 
-    st.write("#### Struktur Data")
+#===============data uderstanding===========
+if page == "Data Understanding":
+    st.title("📊 Data Understanding")
+
+    st.write("### 🧾 Struktur Data (5 Baris Awal)")
     st.dataframe(df.head())
 
-    st.write("#### Info Kolom dan Tipe Data")
-    buffer = io.StringIO()  
+    st.write("### ℹ️ Info Kolom dan Tipe Data")
+    import io
+    buffer = io.StringIO()
     df.info(buf=buffer)
     s = buffer.getvalue()
     st.text(s)
 
-    st.write("#### Statistik Deskriptif")
+    st.write("### 📈 Statistik Deskriptif")
     st.dataframe(df.describe())
 
-    st.write("#### Distribusi Variabel Target (Issued)")
+    st.write("### 📊 Distribusi Variabel Target ('Issued')")
     if 'Issued' in df.columns:
         st.bar_chart(df['Issued'].value_counts())
     else:
-        st.warning("Kolom 'Issued' tidak ditemukan dalam dataset.")
+        st.warning("Kolom 'Issued' tidak ditemukan.")
 
-    st.write("#### Korelasi Antar Variabel Numerik")
+    st.write("### 🔥 Korelasi Antar Variabel Numerik")
+    fig_corr, ax_corr = plt.subplots(figsize=(12, 8))
+    sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', linewidths=0.5, ax=ax_corr)
+    ax_corr.set_title('Heatmap Korelasi')
+    st.pyplot(fig_corr)
+
+    # ==================================================
+    st.write("### 📦 Boxplot Semua Fitur Numerik")
+    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    for col in num_cols:
+        st.markdown(f"**{col}**")
+        fig_box, ax_box = plt.subplots()
+        sns.boxplot(x=df[col], ax=ax_box, color='skyblue')
+        ax_box.set_title(f"Boxplot: {col}")
+        st.pyplot(fig_box)
+
+    # ==================================================
+    st.write("### 🧮 Histogram Semua Fitur Numerik")
+    for col in num_cols:
+        st.markdown(f"**{col}**")
+        fig_hist, ax_hist = plt.subplots()
+        sns.histplot(df[col], kde=True, color='lightgreen', ax=ax_hist)
+        ax_hist.set_title(f"Histogram: {col}")
+        st.pyplot(fig_hist)
+
+# ============================================
+# Preprocessing
+# ============================================
+le = LabelEncoder()
+for col in df.select_dtypes(include='object').columns:
+    df[col] = le.fit_transform(df[col])
+
+target_col = 'Issued' if 'Issued' in df.columns else df.columns[-1]
+X = df.drop(target_col, axis=1)
+y = df[target_col]
+
+X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# ============================================
+# Halaman: Unsupervised Learning
+# ============================================
+if page == "Unsupervised Learning":
+    st.title("Unsupervised Learning - K-Means Clustering")
+
+    st.write("#### Statistik Deskriptif")
+    st.dataframe(df.describe())
+
+    st.write("#### Visualisasi Korelasi Fitur")
     fig_corr, ax_corr = plt.subplots(figsize=(12, 8))
     sns.heatmap(df.corr(numeric_only=True), annot=False, cmap='coolwarm', linewidths=0.5, ax=ax_corr)
     ax_corr.set_title('Korelasi Antar Fitur')
     st.pyplot(fig_corr)
 
-    st.write("#### Boxplot per Fitur Numerik")
-    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    selected_col = st.selectbox("Pilih fitur untuk ditampilkan boxplot:", num_cols)
-    fig_box, ax_box = plt.subplots()
-    sns.boxplot(x=df[selected_col], ax=ax_box, color='skyblue')
-    ax_box.set_title(f"Boxplot: {selected_col}")
-    st.pyplot(fig_box)
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    kmeans_labels = kmeans.fit_predict(X_scaled)
+    df['Cluster'] = kmeans_labels
 
-# ============================================
-# 3. Data Preparation (Persiapan Data)
-# ============================================
-# Encode nilai target Issued jika masih berupa teks
-if 'Issued' in df.columns:
-    df['Issued'] = df['Issued'].replace({'Yes': 1, 'No': 0})
-
-# Label Encoding untuk kolom kategorikal lainnya
-le = LabelEncoder()
-for col in df.select_dtypes(include='object').columns:
-    df[col] = le.fit_transform(df[col])
-
-# Tentukan kolom target
-target_col = 'Issued' if 'Issued' in df.columns else df.columns[-1]
-X = df.drop(target_col, axis=1)
-y = df[target_col]
-
-# Konversi dan scaling
-X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Split data untuk supervised learning
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
-
-# ============================================
-# 4A. Unsupervised Learning - K-Means Clustering
-# ============================================
-if page == "Unsupervised Learning":
-    st.title("Unsupervised Learning - K-Means Clustering")
-
-    n_clusters = st.slider("Pilih jumlah cluster:", 2, 6, 3)
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    df['Cluster'] = kmeans.fit_predict(X_scaled)
-
-    st.write("#### Distribusi Cluster")
-    st.bar_chart(df['Cluster'].value_counts())
-
-    # Visualisasi PCA 2D
     pca = PCA(n_components=2)
     pca_result = pca.fit_transform(X_scaled)
     df['PCA1'] = pca_result[:, 0]
     df['PCA2'] = pca_result[:, 1]
 
+    jitter_strength = st.slider('Jitter Strength (untuk visualisasi PCA)', 0.0, 1.0, 0.2, step=0.05)
+    df['PCA 1'] = df['PCA1'] + np.random.normal(0, jitter_strength, size=len(df))
+    df['PCA 2'] = df['PCA2'] + np.random.normal(0, jitter_strength, size=len(df))
+
     fig_pca, ax_pca = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(x='PCA1', y='PCA2', hue='Cluster', data=df, palette='Set2', ax=ax_pca)
+    sns.scatterplot(
+        x='PCA 1', 
+        y='PCA 2', 
+        hue='Cluster', 
+        data=df, 
+        palette='Set2',
+        s=60,
+        alpha=0.6,
+        edgecolor='black',
+        linewidth=0.5,
+        ax=ax_pca
+    )
+
     ax_pca.set_title('Visualisasi Cluster (PCA)', fontsize=14)
+    ax_pca.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig_pca)
 
 # ============================================
-# 4B. Supervised Learning - Logistic Regression
+# Halaman: Supervised Learning
 # ============================================
 elif page == "Supervised Learning":
     st.title("Supervised Learning - Logistic Regression")
+
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
 
     lr = LogisticRegression()
     lr.fit(X_train, y_train)
@@ -138,17 +161,16 @@ elif page == "Supervised Learning":
     y_prob = lr.predict_proba(X_test)[:, 1] if len(np.unique(y_train)) == 2 else None
 
     st.write("#### Classification Report")
-    labels = [0, 1]  # Pastikan hanya 0 dan 1
-    report = classification_report(y_test, y_pred, labels=labels, target_names=['No', 'Yes'], output_dict=True)
+    report = classification_report(y_test, y_pred, output_dict=True)
     st.dataframe(pd.DataFrame(report).transpose())
 
     st.write("#### Confusion Matrix")
-    cm = confusion_matrix(y_test, y_pred, labels=labels)
     fig_cm, ax_cm = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['No', 'Yes'], yticklabels=['No', 'Yes'], ax=ax_cm)
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', ax=ax_cm)
     ax_cm.set_title('Confusion Matrix')
     st.pyplot(fig_cm)
 
+    st.write("Label unik di y_test:", np.unique(y_test))
     if y_prob is not None:
         fpr, tpr, _ = roc_curve(y_test, y_prob)
         auc_score = roc_auc_score(y_test, y_prob)
@@ -173,7 +195,7 @@ elif page == "Supervised Learning":
     st.dataframe(coef_df)
 
     st.markdown("""
-    Interpretasi Koefisien:
+    *Interpretasi Koefisien:*
     - Koefisien positif artinya fitur meningkatkan kemungkinan polis berhasil diterbitkan.
     - Koefisien negatif artinya fitur menurunkan kemungkinan polis berhasil diterbitkan.
     - Semakin besar nilai absolut koefisien, semakin besar pengaruhnya terhadap prediksi.
