@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.decomposition import SparsePCA
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
@@ -40,17 +41,14 @@ page = st.sidebar.radio("Pilih halaman:", ["Unsupervised Learning", "Supervised 
 # ============================================
 # Preprocessing
 # ============================================
-# Label Encoding untuk kolom kategorikal
 le = LabelEncoder()
 for col in df.select_dtypes(include='object').columns:
     df[col] = le.fit_transform(df[col])
 
-# Tentukan kolom target
 target_col = 'Issued' if 'Issued' in df.columns else df.columns[-1]
 X = df.drop(target_col, axis=1)
 y = df[target_col]
 
-# Konversi dan scaling
 X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
@@ -70,23 +68,35 @@ if page == "Unsupervised Learning":
     ax_corr.set_title('Korelasi Antar Fitur')
     st.pyplot(fig_corr)
 
-    # K-Means Clustering
-    n_clusters = st.slider("Pilih jumlah cluster:", 2, 6, 3)
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    df['Cluster'] = kmeans.fit_predict(X_scaled)
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    kmeans_labels = kmeans.fit_predict(X_scaled)
+    df['Cluster'] = kmeans_labels
 
-    st.write("#### Distribusi Cluster")
-    st.bar_chart(df['Cluster'].value_counts())
-
-    # Visualisasi PCA 2D
     pca = PCA(n_components=2)
     pca_result = pca.fit_transform(X_scaled)
     df['PCA1'] = pca_result[:, 0]
     df['PCA2'] = pca_result[:, 1]
 
+    jitter_strength = st.slider('Jitter Strength (untuk visualisasi PCA)', 0.0, 1.0, 0.2, step=0.05)
+    df['PCA 1'] = df['PCA1'] + np.random.normal(0, jitter_strength, size=len(df))
+    df['PCA 2'] = df['PCA2'] + np.random.normal(0, jitter_strength, size=len(df))
+
     fig_pca, ax_pca = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(x='PCA1', y='PCA2', hue='Cluster', data=df, palette='Set2', ax=ax_pca)
+    sns.scatterplot(
+        x='PCA 1', 
+        y='PCA 2', 
+        hue='Cluster', 
+        data=df, 
+        palette='Set2',
+        s=60,
+        alpha=0.6,
+        edgecolor='black',
+        linewidth=0.5,
+        ax=ax_pca
+    )
+
     ax_pca.set_title('Visualisasi Cluster (PCA)', fontsize=14)
+    ax_pca.grid(True, linestyle='--', alpha=0.5)
     st.pyplot(fig_pca)
 
 # ============================================
@@ -95,7 +105,6 @@ if page == "Unsupervised Learning":
 elif page == "Supervised Learning":
     st.title("Supervised Learning - Logistic Regression")
 
-    # Splitting Data
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
 
     lr = LogisticRegression()
